@@ -1,7 +1,10 @@
-import fitz 
+import pymupdf
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 from PIL import Image
+
+import base64
+from IPython.display import Image as Imagep, display as displayp
 
 from llama_index.core import Document
 
@@ -47,12 +50,12 @@ def plot_pdf_with_boxes(pdf_image, segments):
     plt.show()
 
 def render_page(file_path: str, doc_list: list, page_number: int, print_text = True) -> None:
-    pdf_page = fitz.open(file_path).load_page(page_number - 1)
+    pdf_page = pymupdf.open(file_path).load_page(page_number - 1)
     page_docs = [
         doc for doc in doc_list if doc.metadata.get('page_number') == page_number
     ]
     segments = [doc.metadata for doc in page_docs]
-    print(segments)
+
     plot_pdf_with_boxes(pdf_page, segments)
     if print_text:
         for doc in page_docs:
@@ -95,3 +98,20 @@ def chunk_composition(chunks):
             print("\n\nChunk", i)
             for doc in chunk.metadata.orig_elements:
                 print(doc.to_dict()["type"], doc.metadata.page_number)
+
+
+def get_images_base64(chunks):
+    images_b64 = []
+    for chunk in chunks: 
+        if "CompositeElement" in str(type(chunk)):
+            chunk_els = chunk.metadata.orig_elements
+            for el in chunk_els:
+                if el.category == 'Image':
+                    images_b64.append(el.metadata.image_base64)
+                if (el.category == 'Table') and hasattr(el.metadata, 'image_base64'):
+                    images_b64.append(el.metadata.image_base64)
+    return images_b64
+
+def display_base64_image(base64_code):
+    image_data = base64.b64decode(base64_code)
+    displayp(Imagep(data = image_data))
